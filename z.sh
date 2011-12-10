@@ -69,13 +69,24 @@ _z() {
 
  # tab completion
  elif [ "$1" = "--complete" ]; then
-  awk -v q="$2" -F"|" '
+  awk -v knownFile="$datafile" -v q="$2" -F"|" '
+   function exists(path,    tmp) {
+    n = gsub("/+", "/", path)
+    for( i = 0; i < n; i++ )
+     path = path "/.."
+    path = path knownFile
+    if( ( getline tmp < path ) >= 0 ) {
+     close(path)
+     return 1
+    }
+    return 0
+   }
    BEGIN {
     if( q == tolower(q) ) nocase = 1
     split(substr(q,3),fnd," ")
    }
    {
-    if( system("test -d \"" $1 "\"") ) next
+    if( !exists($1) ) next
     if( nocase ) {
      for( i in fnd ) tolower($1) !~ tolower(fnd[i]) && $1 = ""
     } else {
@@ -107,7 +118,19 @@ _z() {
   [ -f "$datafile" ] || return
 
   local cd
-  cd="$(awk -v t="$(date +%s)" -v list="$list" -v typ="$typ" -v q="$fnd" -F"|" '
+  cd="$(awk -v t="$(date +%s)" -v knownFile="$datafile" -v list="$list" \
+    -v typ="$typ" -v q="$fnd" -F"|" '
+   function exists(path,    tmp) {
+    n = gsub("/+", "/", path)
+    for( i = 0; i < n; i++ )
+     path = path "/.."
+    path = path knownFile
+    if( ( getline tmp < path ) >= 0 ) {
+     close(path)
+     return 1
+    }
+    return 0
+   }
    function frecent(rank, time) {
     dx = t-time
     if( dx < 3600 ) return rank*4
@@ -139,7 +162,7 @@ _z() {
    }
    BEGIN { split(q, a, " ") }
    {
-    if( system("test -d \"" $1 "\"") ) next
+    if( !exists($1) ) next
     if( typ == "rank" ) {
      f = $2
     } else if( typ == "recent" ) {
